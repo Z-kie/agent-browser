@@ -22,14 +22,15 @@ function printUsage(): void {
 agent-browser license <command>
 
 Commands:
-  status          Show current license tier and limits
-  set <key>       Save a Pro license key
-  remove          Remove license key (revert to free tier)
+  status               Show current license tier and limits
+  activate <key>       Verify key server-side and save (recommended)
+  set <key>            Save a Pro license key (offline only)
+  remove               Remove license key (revert to free tier)
 
 Environment variable:
   AGENT_BROWSER_LICENSE_KEY   Set license key without saving to disk
 
-Get a license key at: https://authichain.com/license
+Get a license key at: https://authichain.com/agent-browser
 `.trim());
 }
 
@@ -97,6 +98,52 @@ function removeKey(): void {
   console.log('License key removed. Reverted to free tier.');
 }
 
+/**
+ * Verify a key server-side (revocation check) then save it.
+ * Falls back to offline validation only if the server is unreachable.
+ */
+async function activateKey(key: string): Promise<void> {
+  if (!key || key.split('.').length !== 2) {
+    console.error('Invalid license key format. Keys look like: <payload>.<signature>');
+    process.exit(1);
+  }
+
+  const verifyUrl = 'https://license.authichain.workers.dev/api/license/verify';
+  let serverValid = false;
+  let serverMsg = '';
+
+  try {
+    process.stdout.write('Verifying license with AuthiChain... ');
+    const res = await fetch(`${verifyUrl}?key=${encodeURIComponent(key)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    const data: any = await res.json();
+    if (res.ok && data.valid) {
+      serverValid = true;
+      const tierLabel = (data.tier as string).charAt(0).toUpperCase() + (data.tier as string).slice(1);
+      serverMsg = `${tierLabel} license confirmed for ${data.email}`;
+    } else {
+      console.log('');
+      console.error(`License rejected by server: ${data.error ?? 'invalid or revoked'}`);
+      process.exit(1);
+    }
+  } catch {
+    // Server unreachable — fall back to offline verification
+    console.log('(offline)');
+  }
+
+  saveLicenseKey(key);
+  const info = validateLicense();
+
+  if (!info.valid) {
+    console.error(`\nLicense key invalid: ${info.reason}`);
+    process.exit(1);
+  }
+
+  console.log(serverMsg ? `\n✓  ${serverMsg}` : `\n${formatLicenseStatus(info)}`);
+  console.log('License key saved to ~/.agent-browser/license.key\n');
+}
+
 export function runLicenseCli(args: string[]): void {
   const [command, ...rest] = args;
 
@@ -105,6 +152,19 @@ export function runLicenseCli(args: string[]): void {
     case undefined:
       printStatus();
       break;
+
+    case 'activate': {
+      const key = rest[0];
+      if (!key) {
+        console.error('Usage: agent-browser license activate <key>');
+        process.exit(1);
+      }
+      activateKey(key).catch((err) => {
+        console.error('Activation failed:', err.message);
+        process.exit(1);
+      });
+      break;
+    }
 
     case 'set': {
       const key = rest[0];
