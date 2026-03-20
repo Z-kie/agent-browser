@@ -4,6 +4,7 @@ import type { Page, Frame } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 import type { BrowserManager, ScreencastFrame } from './browser.js';
 import { getAppDir } from './daemon.js';
+import { validateLicense, getLimits } from './license.js';
 import {
   type ActionPolicy,
   checkPolicy,
@@ -312,6 +313,22 @@ export async function executeCommand(command: Command, browser: BrowserManager):
         confirmation_id: confirmationId,
       });
     }
+
+    // ── Pro feature gate ────────────────────────────────────────────────────
+    const PRO_ONLY_ACTIONS = new Set(['recording_start', 'recording_stop', 'recording_restart']);
+    if (PRO_ONLY_ACTIONS.has(command.action)) {
+      const lic = validateLicense();
+      const lim = getLimits(lic);
+      if (!lim.sessionRecordingExport) {
+        return errorResponse(
+          command.id,
+          'Session recording requires an agent-browser Pro license. ' +
+          'Upgrade at https://authichain.com/agent-browser or activate with: ' +
+          'agent-browser license activate <key>'
+        );
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     return await dispatchAction(command, browser);
   } catch (error) {
