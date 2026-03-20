@@ -1151,6 +1151,37 @@ When enabled, agent-browser connects to a Kernel cloud session instead of launch
 
 Get your API key from the [Kernel Dashboard](https://dashboard.onkernel.com).
 
+## Pro License
+
+agent-browser is **free** for single-session use. Pro unlocks:
+
+| Feature | Free | Pro |
+|---|---|---|
+| Concurrent browser sessions | 1 | Unlimited |
+| Session recording export | — | ✓ |
+| Cloud relay access | — | ✓ |
+| Priority support | — | ✓ |
+
+**Get a Pro license:** [authichain.com/agent-browser](https://authichain.com/agent-browser) — 14-day free trial, no credit card required.
+
+**Activate your license key:**
+
+```bash
+agent-browser license activate <your-key>
+```
+
+Or set the environment variable:
+
+```bash
+export AGENT_BROWSER_LICENSE_KEY=<your-key>
+```
+
+**Check your license status:**
+
+```bash
+agent-browser license status
+```
+
 ## License
 
 Apache-2.0
