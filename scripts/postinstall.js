@@ -80,7 +80,7 @@ async function main() {
     // On global installs, fix npm's bin entry to use native binary directly
     await fixGlobalInstallBin();
     
-    showPlaywrightReminder();
+    await showPlaywrightReminder();
     return;
   }
 
@@ -117,7 +117,7 @@ async function main() {
   showPlaywrightReminder();
 }
 
-function showPlaywrightReminder() {
+async function showPlaywrightReminder() {
   console.log('');
   console.log('╔═══════════════════════════════════════════════════════════════════════════╗');
   console.log('║ To download browser binaries, run:                                        ║');
@@ -129,6 +129,29 @@ function showPlaywrightReminder() {
   console.log('║     npx playwright install --with-deps chromium                           ║');
   console.log('║                                                                           ║');
   console.log('╚═══════════════════════════════════════════════════════════════════════════╝');
+  await showProUpsell();
+}
+
+async function showProUpsell() {
+  // Skip upsell if a license key is already configured
+  if (process.env.AGENT_BROWSER_LICENSE_KEY) return;
+  try {
+    const { existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { homedir } = await import('node:os');
+    if (existsSync(join(homedir(), '.agent-browser', 'license.key'))) return;
+  } catch { /* best-effort, show upsell if check fails */ }
+
+  console.log('');
+  console.log('┌─────────────────────────────────────────────────────────────────────────┐');
+  console.log('│  agent-browser Pro — Unlimited concurrent sessions + session recording  │');
+  console.log('│                                                                         │');
+  console.log('│  Free tier: 1 concurrent session                                       │');
+  console.log('│  Pro:       Unlimited sessions · Recording export · Cloud relay        │');
+  console.log('│                                                                         │');
+  console.log('│  14-day free trial: https://authichain.com/agent-browser               │');
+  console.log('│  Activate:  agent-browser license activate <key>                       │');
+  console.log('└─────────────────────────────────────────────────────────────────────────┘');
 }
 
 /**
